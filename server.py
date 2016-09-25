@@ -18,4 +18,4 @@ while True:
   s.send(MESSAGE)
   s.close()
   print (MESSAGE)
-  time.sleep(5)
+  time.sleep(60)

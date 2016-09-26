@@ -6,9 +6,9 @@ TCP_IP = '72.36.65.116'
 TCP_PORT = 5005
 BUFFER_SIZE = 1024
 
-#if len(sys.argv) < 2:
-#  print ("Enter the server id")
-#  sys.exit(1)
+if len(sys.argv) < 2:
+  print ("Enter the server id")
+  sys.exit(1)
 
 intf = 'eth1'
 intf_ip = commands.getoutput("ip address show dev " + intf).split()
@@ -18,7 +18,7 @@ print intf_ip
 while True:
   v = random.randint(1, 10)
   ts = time.time()
-  MESSAGE = str(v) + ";" + intf_ip + ";" + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+  MESSAGE = str(v) + ";" + sys.argv[1] + ";" + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S') + ";" + intf_ip
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   s.connect((TCP_IP, TCP_PORT))
   s.send(MESSAGE)

@@ -5,12 +5,12 @@ import re
 from datetime import datetime
 
 def insertInto (cur, recieved, source, id): #inserts data into the table
- energyValue, serverID, date = recieved
+ energyValue, serverID, date, private_ip = recieved
  value = int(energyValue)
  sID = int(serverID)
 
- print (id, value, source[0], sID, date)
- cur.execute ("INSERT into energyValues(id, value, ip, server, time) values (?, ?, ?, ?, ?)", (id, value, source[0], sID, date))
+ print (id, value, source[0], sID, date, private_ip)
+ cur.execute ("INSERT into energyValues(id, value, ip, server, time, private_ip) values (?, ?, ?, ?, ?, ?)", (id, value, source[0], sID, date, private_ip))
  #date_object = datetime.strptime (date, '%Y-%m-%d %H:%M:%S')
  
 def listenTCP(TCP_IP, TCP_PORT, connLimit): #opens listening TCP ports

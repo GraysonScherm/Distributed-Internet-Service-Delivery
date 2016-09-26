@@ -4,7 +4,7 @@ import datetime
 import time, random
 TCP_IP = '72.36.65.116'
 TCP_PORT = 5005
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 1024 #buffer size
 
 if len(sys.argv) < 2:
   print ("Enter the server id")

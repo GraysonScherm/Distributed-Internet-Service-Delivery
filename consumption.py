@@ -1,1 +1,2 @@
 #consumption function
+import sys

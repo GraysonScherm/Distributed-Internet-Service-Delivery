@@ -25,11 +25,13 @@ from ryu.base import app_manager
 from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.controller.handler import CONFIG_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_0
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
+from ryu.controller import dpset
 from utils import *
 '''
 This file is edited from Ryu example which is located at  ryu/ryu/app/simple_switch.py.
@@ -45,6 +47,15 @@ class SimpleSwitch(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
+
+    
+    def add_flow(self, datapath, match, act, priority=0, idle_timeout=0):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+   
+        mod = parser.OFPFlowMod(datapath=datapath, priority=priority, match=match, actions=act, idle_timeout=idle_timeout)
+        datapath.send_msg(mod)
+
 
     def get_out_port(self,msg):
 
@@ -92,7 +103,7 @@ class SimpleSwitch(app_manager.RyuApp):
 
             sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)
 
-    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
+    #@set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
@@ -104,31 +115,31 @@ class SimpleSwitch(app_manager.RyuApp):
         src = eth.src
 
         dpid = datapath.id
-        self.logger.info("!!! packet in %s %s %s %s", dpid, src, dst, msg.in_port)
+        self.logger.info("packet in %s %s %s %s", dpid, src, dst, msg.in_port)
 	
 	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)
 	conn = sqlite3.connect('/dev/fd/%d' % fd)
 	os.close(fd)
         cursor = conn.cursor()
-        addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') #filter client packets
+#        addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') #filter client packets
 	pkt_arp = pkt.get_protocol(arp.arp)
-	if pkt_arp:
-         if pkt_arp.dst_ip in addressList: 
-	  print (pkt_arp)
-	  destination = (pkt_arp.dst_ip,) #get destination ip
-	  print (destination)
-	  cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where private_ip = ?)", destination)
-	  #	energyValue = cursor.fetchone()[1]
-	  recentInfo = cursor.fetchall()
-          print (recentInfo)
-	  print ("Energy value: " + str(recentInfo[0][1]))
-	  #	set.logger.info ("Last energy value: %s", str(energyValue))
+#	if pkt_arp:
+#         if pkt_arp.dst_ip in addressList: 
+#	  print (pkt_arp)
+#	  destination = (pkt_arp.dst_ip,) #get destination ip
+#	  print (destination)
+#	  cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where private_ip = ?)", destination)
+#	  #	energyValue = cursor.fetchone()[1]
+#	  recentInfo = cursor.fetchall()
+#          print (recentInfo)
+#	  print ("Energy value: " + str(recentInfo[0][1]))
+#	  #	set.logger.info ("Last energy value: %s", str(energyValue))
 
         self.macLearningHandle(msg)
 
         out_port = self.get_out_port(msg)	
 
-        self.forward_packet(msg, [out_port])
+        #self.forward_packet(msg, [out_port])
 
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
@@ -145,3 +156,28 @@ class SimpleSwitch(app_manager.RyuApp):
             self.logger.info("port modified %s", port_no)
         else:
             self.logger.info("Illeagal port state %s %s", port_no, reason)
+
+    
+    @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
+    def _event_switch_enter_handler(self, ev):
+       dl_type_ipv4 = 0x0800
+       dl_type_arp = 0x0806
+       dp = ev.dp
+       ofproto = dp.ofproto
+       parser = dp.ofproto_parser
+       self.logger.info("Wow! switch connected %s", dp)
+       addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') # process packets from servers normally
+      # hwAddressList = ('02:71:2a:55:7f:98') #filter client packets
+       actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
+       for address in addressList:
+         match = parser.OFPMatch(dl_type = dl_type_ipv4, nw_src = address)
+         self.add_flow(dp, match, actions, 1, 100)     
+#        self.logger.info("Added l2 flow for address %s", address)
+       
+       match = parser.OFPMatch(dl_type = dl_type_arp)#process arp packets normally
+       self.add_flow(dp, match, actions, 1, 100)
+	
+       match = parser.OFPMatch ()
+       actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
+       self.add_flow(dp, match, actions, 0) #add miss flow
+       self.logger.info("Added default rules and miss flow")

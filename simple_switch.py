@@ -115,10 +115,13 @@ class SimpleSwitch(app_manager.RyuApp):
         dst = eth.dst
         src = eth.src
 	ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
-
         dpid = datapath.id
-        self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
+	if ipv4_pkt:
+          self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
 	
+	# if its ipv4_packet, install a flow with certain IDLE_TIME for the client to output to port N, given by the request to the scheduler.
+	# Send the packet to that port. 
+
 #	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)
 #	conn = sqlite3.connect('/dev/fd/%d' % fd)
 #	os.close(fd)

@@ -31,6 +31,7 @@ from ryu.ofproto import ofproto_v1_0
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
 from ryu.controller import dpset
 from utils import *
 '''
@@ -103,7 +104,7 @@ class SimpleSwitch(app_manager.RyuApp):
 
             sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)
 
-    #@set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
+    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
@@ -113,16 +114,17 @@ class SimpleSwitch(app_manager.RyuApp):
         eth = pkt.get_protocol(ethernet.ethernet)
         dst = eth.dst
         src = eth.src
+	ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
 
         dpid = datapath.id
-        self.logger.info("packet in %s %s %s %s", dpid, src, dst, msg.in_port)
+        self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
 	
-	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)
-	conn = sqlite3.connect('/dev/fd/%d' % fd)
-	os.close(fd)
-        cursor = conn.cursor()
+#	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)
+#	conn = sqlite3.connect('/dev/fd/%d' % fd)
+#	os.close(fd)
+#        cursor = conn.cursor()
 #        addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') #filter client packets
-	pkt_arp = pkt.get_protocol(arp.arp)
+#	pkt_arp = pkt.get_protocol(arp.arp)
 #	if pkt_arp:
 #         if pkt_arp.dst_ip in addressList: 
 #	  print (pkt_arp)
@@ -135,9 +137,9 @@ class SimpleSwitch(app_manager.RyuApp):
 #	  print ("Energy value: " + str(recentInfo[0][1]))
 #	  #	set.logger.info ("Last energy value: %s", str(energyValue))
 
-        self.macLearningHandle(msg)
+#        self.macLearningHandle(msg)
 
-        out_port = self.get_out_port(msg)	
+#        out_port = self.get_out_port(msg)	
 
         #self.forward_packet(msg, [out_port])
 

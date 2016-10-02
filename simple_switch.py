@@ -188,8 +188,8 @@ class SimpleSwitch(app_manager.RyuApp):
        match = parser.OFPMatch(dl_type = dl_type_arp)#process arp packets normally
        self.add_flow(dp, match, actions, 1, 0)
 
-       match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_dst = '10.10.1.1')
-       actions = [parser.OFPActionSetNwDst(self.ipv4_to_int('10.10.1.2')), parser.OFPActionSetDlDst(haddr_to_bin('02:b4:9c:c8:84:42')), parser.OFPActionOutput(3)]
+       match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_dst = self.servers[1][1])
+       actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[2][1])), parser.OFPActionSetDlDst(haddr_to_bin(self.servers[2][2])), parser.OFPActionOutput(self.servers[2][0])]
                                                  
        self.add_flow(dp, match, actions, 1, 100)
 	

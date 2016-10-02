@@ -33,7 +33,9 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.controller import dpset
+from netaddr import *
 from utils import *
+from ryu.lib.mac import haddr_to_bin
 '''
 This file is edited from Ryu example which is located at  ryu/ryu/app/simple_switch.py.
 According to its licecse(please don't trust my reading and read it), we can modify and use it as long as we keep the old license and state we've change the code. --Joe
@@ -44,6 +46,10 @@ FLOW_IDLE_TIMEOUT = 10
 
 class SimpleSwitch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
+    
+    servers = [0, [1, '10.10.1.1', '02:71:2a:55:7f:98'], [3, '10.10.1.2', '02:b4:9c:c8:84:42'], [4, '10.10.1.3', '02:51:94:52:e2:a7']]
+
+
 
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch, self).__init__(*args, **kwargs)
@@ -176,13 +182,30 @@ class SimpleSwitch(app_manager.RyuApp):
        actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
        for address in addressList:
          match = parser.OFPMatch(dl_type = dl_type_ipv4, nw_src = address)
-         self.add_flow(dp, match, actions, 1, 100)     
+         self.add_flow(dp, match, actions, 1, 0)     
 #        self.logger.info("Added l2 flow for address %s", address)
        
        match = parser.OFPMatch(dl_type = dl_type_arp)#process arp packets normally
+       self.add_flow(dp, match, actions, 1, 0)
+
+       match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_dst = '10.10.1.1')
+       actions = [parser.OFPActionSetNwDst(self.ipv4_to_int('10.10.1.2')), parser.OFPActionSetDlDst(haddr_to_bin('02:b4:9c:c8:84:42')), parser.OFPActionOutput(3)]
+                                                 
        self.add_flow(dp, match, actions, 1, 100)
 	
        match = parser.OFPMatch ()
        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
-       self.add_flow(dp, match, actions, 0) #add miss flow
+       self.add_flow(dp, match, actions, 0, 0) #add miss flow
        self.logger.info("Added default rules and miss flow")
+
+       print self.servers[1][2]
+
+    def ipv4_to_int(self, string):
+       	ip = string.split('.')
+       	assert len(ip) == 4
+       	i = 0
+       	for b in ip:
+    		b = int(b)
+        	i = (i << 8) | b
+        return i
+

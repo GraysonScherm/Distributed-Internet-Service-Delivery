@@ -6,7 +6,7 @@ TCP_IP = '72.36.65.116'
 TCP_PORT = 5005
 BUFFER_SIZE = 1024 #buffer size
 
-bs = 100
+bs = 10
 interval = sys.argv[2]
 serverID = sys.argv[1]
 

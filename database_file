@@ -3,7 +3,7 @@ import sqlite3
 conn = sqlite3.connect('controller.db')
 cursor = conn.cursor()
 
-cursor.execute('''CREATE TABLE energyValues (id INTEGER PRIMARY KEY, value REAL, ip STRING, server INTEGER, time STRING) ''' )
+cursor.execute('''CREATE TABLE energyValues (id INTEGER PRIMARY KEY, value REAL, ip STRING, server INTEGER, time STRING, private_ip STRING) ''' )
 #cursor.execute ("INSERT into energyValues(id, value, ip, server, time) values (?, ?, ?, ?, ?)", (1, 2, 'aaa', 1, 'sdfsdf'))
 #cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where server = 1)")
 #cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where ip = ?)", dst)

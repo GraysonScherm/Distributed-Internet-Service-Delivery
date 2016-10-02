@@ -9,10 +9,10 @@ def load(lambdaList, lambdaNominal, serverID):
 	serverLoad = float((lambdaList[serverID]) / lambdaNominal)
 
 	serverPower = serverPowerIdle + ((serverPowerPeak - serverPowerIdle) * serverLoad)
-	print (serverLoad)
+#	print (serverLoad)
 	return serverPower
 
-load([1000, 2003, 1905], 5000, 1)
+#load([1000, 2003, 1905], 5000, 1)
 
     
     

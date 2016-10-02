@@ -6,7 +6,7 @@ from datetime import datetime
 
 def insertInto (cur, recieved, source, id): #inserts data into the table
  energyValue, serverID, date, private_ip = recieved
- value = int(energyValue)
+ value = float(energyValue)
  sID = int(serverID)
 
  print (id, value, source[0], sID, date, private_ip)

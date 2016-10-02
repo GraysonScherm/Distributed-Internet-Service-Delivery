@@ -1,13 +1,20 @@
 #consumption function
 import sys
 
-serverPower = float(0)
-serverPowerIdle = float(sys.argv[1])
-serverPowerPeak = float(sys.argv[2])
-serverLoad = float(sys.argv[3])
 
-serverPower = serverPowerIdle + ((serverPowerPeak - serverPowerIdle) * serverLoad)
+def main():
+	serverPower = float(0)
+	serverPowerIdle = float(63)
+	serverPowerPeak = float(92)
+	serverLoad = float(sys.argv[1])
 
+	serverPower = serverPowerIdle + ((serverPowerPeak - serverPowerIdle) * serverLoad)
+
+	return serverPower
+
+
+    
+    
 
 
 

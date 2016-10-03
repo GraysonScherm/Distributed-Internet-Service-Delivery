@@ -48,7 +48,7 @@ class SimpleSwitch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
     
     servers = [0, [1, '10.10.1.1', '02:71:2a:55:7f:98'], [3, '10.10.1.2', '02:b4:9c:c8:84:42'], [4, '10.10.1.3', '02:51:94:52:e2:a7']]
-
+    serverLoad = [0, 0, 0, 0]
 
 
     def __init__(self, *args, **kwargs):
@@ -56,11 +56,11 @@ class SimpleSwitch(app_manager.RyuApp):
         self.mac_to_port = {}
 
     
-    def add_flow(self, datapath, match, act, priority=0, idle_timeout=0):
+    def add_flow(self, datapath, match, act, priority=0, idle_timeout=0, flags=0, cookie=0):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
    
-        mod = parser.OFPFlowMod(datapath=datapath, priority=priority, match=match, actions=act, idle_timeout=idle_timeout)
+        mod = parser.OFPFlowMod(datapath=datapath, priority=priority, match=match, actions=act, flags=flags, idle_timeout=idle_timeout, cookie=cookie)
         datapath.send_msg(mod)
 
 
@@ -124,6 +124,8 @@ class SimpleSwitch(app_manager.RyuApp):
         dpid = datapath.id
 	if ipv4_pkt:
           self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
+
+
 	
 	# if its ipv4_packet, install a flow with certain IDLE_TIME for the client to output to port N, given by the request to the scheduler.
 	# Send the packet to that port. 
@@ -151,6 +153,14 @@ class SimpleSwitch(app_manager.RyuApp):
 #        out_port = self.get_out_port(msg)	
 
         #self.forward_packet(msg, [out_port])
+    
+    @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
+    def flow_removal_handler(self, ev):
+        msg = ev.msg
+        match = msg.match
+	reason = msg.reason
+        self.logger.info("Server id is %d", msg.cookie)
+	self.serverLoad[msg.cookie]-=1
 
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
     def _port_status_handler(self, ev):
@@ -190,8 +200,9 @@ class SimpleSwitch(app_manager.RyuApp):
 
        match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_dst = self.servers[1][1])
        actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[2][1])), parser.OFPActionSetDlDst(haddr_to_bin(self.servers[2][2])), parser.OFPActionOutput(self.servers[2][0])]
-                                                 
-       self.add_flow(dp, match, actions, 1, 100)
+       
+       self.serverLoad[2]+=1                                          
+       self.add_flow(dp, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, 2)
 	
        match = parser.OFPMatch ()
        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]

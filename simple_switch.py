@@ -63,36 +63,7 @@ class SimpleSwitch(app_manager.RyuApp):
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority, match=match, actions=act, flags=flags, idle_timeout=idle_timeout, cookie=cookie)
         datapath.send_msg(mod)
 
-
-    def get_out_port(self,msg):
-
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
-        dst = eth.dst
-        datapath = msg.datapath
-        dpid = datapath.id
-        ofproto = datapath.ofproto
-
-        if dst in self.mac_to_port[dpid]:
-            out_port = self.mac_to_port[dpid][dst]
-        else:
-            out_port = ofproto.OFPP_FLOOD
-        return out_port
-
-    def macLearningHandle(self, msg) :
-        # learn a mac address to avoid FLOOD next time.
-        datapath = msg.datapath
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
-        src = eth.src
-        dpid = datapath.id	
-        
-        self.mac_to_port.setdefault(dpid, {})
-        self.logger.info("mac table: in_port %s source %s dpid %s", msg.in_port, src, dpid)
-	
-        self.mac_to_port[dpid][src] = msg.in_port
-
-    def forward_packet(self, msg, port_list) :
+    def forward_packet(self, msg, port_list):
 
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -112,6 +83,7 @@ class SimpleSwitch(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
+        dl_type_ipv4 = 0x0800
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -123,7 +95,18 @@ class SimpleSwitch(app_manager.RyuApp):
 	ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
         dpid = datapath.id
 	if ipv4_pkt:
-          self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
+           self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
+           match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(ipv4_pkt.src))
+           serverID = 2 #scheduler()
+           actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
+                    parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(self.servers[serverID][0])]
+           self.serverLoad[serverID]+=1
+           self.add_flow(datapath, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, 2)
+           self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
+           actions = []
+           actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, self.servers[serverID][0]) ) 
+           sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)
+
 
 
 	
@@ -159,26 +142,9 @@ class SimpleSwitch(app_manager.RyuApp):
         msg = ev.msg
         match = msg.match
 	reason = msg.reason
-        self.logger.info("Server id is %d", msg.cookie)
+        self.logger.info("Client released serverID = %d", msg.cookie)
 	self.serverLoad[msg.cookie]-=1
 
-    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
-        msg = ev.msg
-        reason = msg.reason
-        port_no = msg.desc.port_no
-
-        ofproto = msg.datapath.ofproto
-        if reason == ofproto.OFPPR_ADD:
-            self.logger.info("port added %s", port_no)
-        elif reason == ofproto.OFPPR_DELETE:
-            self.logger.info("port deleted %s", port_no)
-        elif reason == ofproto.OFPPR_MODIFY:
-            self.logger.info("port modified %s", port_no)
-        else:
-            self.logger.info("Illeagal port state %s %s", port_no, reason)
-
-    
     @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
     def _event_switch_enter_handler(self, ev):
        dl_type_ipv4 = 0x0800
@@ -186,30 +152,29 @@ class SimpleSwitch(app_manager.RyuApp):
        dp = ev.dp
        ofproto = dp.ofproto
        parser = dp.ofproto_parser
-       self.logger.info("Wow! switch connected %s", dp)
+       self.logger.info("Switch connected %s. Installing default flows...", dp)
        addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') # process packets from servers normally
       # hwAddressList = ('02:71:2a:55:7f:98') #filter client packets
        actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
        for address in addressList:
          match = parser.OFPMatch(dl_type = dl_type_ipv4, nw_src = address)
-         self.add_flow(dp, match, actions, 1, 0)     
+         self.add_flow(dp, match, actions, 2, 0)     
 #        self.logger.info("Added l2 flow for address %s", address)
        
        match = parser.OFPMatch(dl_type = dl_type_arp)#process arp packets normally
        self.add_flow(dp, match, actions, 1, 0)
 
-       match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_dst = self.servers[1][1])
-       actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[2][1])), parser.OFPActionSetDlDst(haddr_to_bin(self.servers[2][2])), parser.OFPActionOutput(self.servers[2][0])]
+      # match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int('10.10.1.14'))
+      # actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[2][1])), parser.OFPActionSetDlDst(haddr_to_bin(self.servers[2][2])), 
+      # parser.OFPActionOutput(self.servers[2][0])]
        
-       self.serverLoad[2]+=1                                          
-       self.add_flow(dp, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, 2)
+      #self.serverLoad[2]+=1                                          
+      # self.add_flow(dp, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, 2)
 	
        match = parser.OFPMatch ()
        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
        self.add_flow(dp, match, actions, 0, 0) #add miss flow
-       self.logger.info("Added default rules and miss flow")
-
-       print self.servers[1][2]
+       self.logger.info("Added default rules for servers and miss-flow")
 
     def ipv4_to_int(self, string):
        	ip = string.split('.')

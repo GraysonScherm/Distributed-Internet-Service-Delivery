@@ -101,7 +101,15 @@ class SimpleSwitch(app_manager.RyuApp):
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
                     parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(self.servers[serverID][0])]
            self.serverLoad[serverID]+=1
-           self.add_flow(datapath, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, 2)
+	   self.add_flow(datapath, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, serverID)
+           
+           #rewriting response header
+           match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(self.servers[serverID][1]), nw_dst=self.ipv4_to_int(ipv4_pkt.src))
+           actions = [ parser.OFPActionSetNwSrc (self.ipv4_to_int(ipv4_pkt.dst)), #REWRITE IP HEADER FOR TCP CONNECTION ESTABLISHMENT. rewriting eth is not needed parser.OFPActionSetDlSrc(haddr_to_bin(eth.dst)), 
+                    parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
+           self.add_flow(datapath, match, actions, 3, 10)
+
+
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
            actions = []
            actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, self.servers[serverID][0]) ) 

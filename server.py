@@ -24,8 +24,8 @@ print intf_ip
 while True:
   gE = random.uniform(1,10)*bs
   ts = time.time()
-  numberOfActiveUsers = subprocess.call("sudo netstat -anp | grep :80 | grep ESTABLISHED | wc -l 2>&1", shell=True, stdout=subprocess.PIPE)
-  MESSAGE = str(gE) + ";" + serverID + ";" + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S') + ";" + intf_ip + ";" + str(numberOfActiveUsers)
+  numberOfActiveUsers = subprocess.check_output("sudo netstat -anp | grep :80 | grep ESTABLISHED | wc -l 2>&1", shell=True, stderr=subprocess.PIPE).split('\n', 1)[0]
+  MESSAGE = str(gE) + ";" + serverID + ";" + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S') + ";" + intf_ip + ";" + numberOfActiveUsers
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   s.connect((TCP_IP, TCP_PORT))
   s.send(MESSAGE)

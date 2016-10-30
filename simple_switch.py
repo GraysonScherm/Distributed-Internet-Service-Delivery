@@ -36,6 +36,8 @@ from ryu.controller import dpset
 from netaddr import *
 from utils import *
 from ryu.lib.mac import haddr_to_bin
+from PropFair import *
+
 '''
 This file is edited from Ryu example which is located at  ryu/ryu/app/simple_switch.py.
 According to its licecse(please don't trust my reading and read it), we can modify and use it as long as we keep the old license and state we've change the code. --Joe
@@ -49,6 +51,7 @@ class SimpleSwitch(app_manager.RyuApp):
     
     servers = [0, [1, '10.10.1.1', '02:71:2a:55:7f:98'], [3, '10.10.1.2', '02:b4:9c:c8:84:42'], [4, '10.10.1.3', '02:51:94:52:e2:a7']]
     serverLoad = [0, 0, 0, 0]
+    T = [1, 1, 1] #previous scheduled memory
 
 
     def __init__(self, *args, **kwargs):
@@ -97,7 +100,11 @@ class SimpleSwitch(app_manager.RyuApp):
 	if ipv4_pkt:
            self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
            match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(ipv4_pkt.src))
-           serverID = 2 #scheduler()
+           
+           GEvector, lambdaList = fetchServerInfo()
+	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
+ 	   serverID = MAX+1 #scheduler()
+
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
                     parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(self.servers[serverID][0])]
            self.serverLoad[serverID]+=1
@@ -107,7 +114,7 @@ class SimpleSwitch(app_manager.RyuApp):
            match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(self.servers[serverID][1]), nw_dst=self.ipv4_to_int(ipv4_pkt.src))
            actions = [ parser.OFPActionSetNwSrc (self.ipv4_to_int(ipv4_pkt.dst)), #REWRITE IP HEADER FOR TCP CONNECTION ESTABLISHMENT. rewriting eth is not needed parser.OFPActionSetDlSrc(haddr_to_bin(eth.dst)), 
                     parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
-           self.add_flow(datapath, match, actions, 3, 10)
+           self.add_flow(datapath, match, actions, 3, 20)
 
 
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)

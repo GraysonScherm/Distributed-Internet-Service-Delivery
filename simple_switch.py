@@ -32,6 +32,7 @@ from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import tcp
 from ryu.controller import dpset
 from netaddr import *
 from utils import *
@@ -97,9 +98,12 @@ class SimpleSwitch(app_manager.RyuApp):
         src = eth.src
 	ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
         dpid = datapath.id
-	if ipv4_pkt:
-           self.logger.info("packet in %s %s %s %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port)
-           match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(ipv4_pkt.src))
+
+	tcp_sgm = pkt.get_protocol(tcp.tcp)	
+
+	if tcp_sgm:
+           self.logger.info("packet in %s %s %s %s; TCP ports %s and %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port, tcp_sgm.src_port, tcp_sgm.dst_port)
+           match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(ipv4_pkt.src), tp_src=tcp_sgm.src_port, nw_proto = 6)
            
            GEvector, lambdaList = fetchServerInfo()
 #	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
@@ -112,7 +116,8 @@ class SimpleSwitch(app_manager.RyuApp):
 	   self.add_flow(datapath, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, serverID)
            
            #rewriting response header
-           match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(self.servers[serverID][1]), nw_dst=self.ipv4_to_int(ipv4_pkt.src))
+           match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(self.servers[serverID][1]), 
+                                    nw_dst=self.ipv4_to_int(ipv4_pkt.src), tp_dst=tcp_sgm.src_port)
            actions = [ parser.OFPActionSetNwSrc (self.ipv4_to_int(ipv4_pkt.dst)), #REWRITE IP HEADER FOR TCP CONNECTION ESTABLISHMENT. rewriting eth is not needed parser.OFPActionSetDlSrc(haddr_to_bin(eth.dst)), 
                     parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
            self.add_flow(datapath, match, actions, 3, 20)
@@ -154,13 +159,6 @@ class SimpleSwitch(app_manager.RyuApp):
        match = parser.OFPMatch(dl_type = dl_type_arp)#process arp packets normally
        self.add_flow(dp, match, actions, 1, 0)
 
-      # match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int('10.10.1.14'))
-      # actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[2][1])), parser.OFPActionSetDlDst(haddr_to_bin(self.servers[2][2])), 
-      # parser.OFPActionOutput(self.servers[2][0])]
-       
-      #self.serverLoad[2]+=1                                          
-      # self.add_flow(dp, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, 2)
-	
        match = parser.OFPMatch ()
        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
        self.add_flow(dp, match, actions, 0, 0) #add miss flow

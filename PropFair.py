@@ -35,7 +35,7 @@ def fetchServerInfo():
 	currentEnergyValues = [0, 0, 0]
 	currentNumberOfUsers = [0, 0, 0]
 	
-	for i in range(0, 2):
+	for i in range(0, 3):
 		cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where server  = ?)", str(i + 1))
 		fetchedData = cursor.fetchall()
 		currentEnergyValues[i] = fetchedData[0][1]

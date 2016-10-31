@@ -117,6 +117,8 @@ class SimpleSwitch(app_manager.RyuApp):
            self.add_flow(datapath, match, actions, 3, 20)
 
 
+           self.logger.info("GEVector status: Server1 - %d, Server2 - %d, Server3 - %d ", GEvector[0], GEvector[1], GEvector[2])
+           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", lambdaList[0], lambdaList[1], lambdaList[2])
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
            actions = []
            actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, self.servers[serverID][0]) ) 

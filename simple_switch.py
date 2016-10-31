@@ -50,7 +50,7 @@ class SimpleSwitch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
     
     servers = [0, [1, '10.10.1.1', '02:71:2a:55:7f:98'], [3, '10.10.1.2', '02:b4:9c:c8:84:42'], [4, '10.10.1.3', '02:51:94:52:e2:a7']]
-    serverLoad = [0, 0, 0, 0]
+    serverLoad = [0, 0, 0]
     T = [1, 1, 1] #previous scheduled memory
 
 
@@ -102,12 +102,13 @@ class SimpleSwitch(app_manager.RyuApp):
            match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(ipv4_pkt.src))
            
            GEvector, lambdaList = fetchServerInfo()
-	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
+#	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
+	   MAX, self.T = Propfair(GEvector,0,self.serverLoad, self.T)
  	   serverID = MAX+1 #scheduler()
 
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
                     parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(self.servers[serverID][0])]
-           self.serverLoad[serverID]+=1
+           self.serverLoad[serverID-1]+=1
 	   self.add_flow(datapath, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, serverID)
            
            #rewriting response header
@@ -118,49 +119,21 @@ class SimpleSwitch(app_manager.RyuApp):
 
 
            self.logger.info("GEVector status: Server1 - %d, Server2 - %d, Server3 - %d ", GEvector[0], GEvector[1], GEvector[2])
-           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", lambdaList[0], lambdaList[1], lambdaList[2])
+#           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", lambdaList[0], lambdaList[1], lambdaList[2])
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
+           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", self.serverLoad[0], self.serverLoad[1], self.serverLoad[2])
            actions = []
            actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, self.servers[serverID][0]) ) 
            sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)
 
-
-
 	
-	# if its ipv4_packet, install a flow with certain IDLE_TIME for the client to output to port N, given by the request to the scheduler.
-	# Send the packet to that port. 
-
-#	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)
-#	conn = sqlite3.connect('/dev/fd/%d' % fd)
-#	os.close(fd)
-#        cursor = conn.cursor()
-#        addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') #filter client packets
-#	pkt_arp = pkt.get_protocol(arp.arp)
-#	if pkt_arp:
-#         if pkt_arp.dst_ip in addressList: 
-#	  print (pkt_arp)
-#	  destination = (pkt_arp.dst_ip,) #get destination ip
-#	  print (destination)
-#	  cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where private_ip = ?)", destination)
-#	  #	energyValue = cursor.fetchone()[1]
-#	  recentInfo = cursor.fetchall()
-#          print (recentInfo)
-#	  print ("Energy value: " + str(recentInfo[0][1]))
-#	  #	set.logger.info ("Last energy value: %s", str(energyValue))
-
-#        self.macLearningHandle(msg)
-
-#        out_port = self.get_out_port(msg)	
-
-        #self.forward_packet(msg, [out_port])
-    
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removal_handler(self, ev):
         msg = ev.msg
         match = msg.match
 	reason = msg.reason
         self.logger.info("Client released serverID = %d", msg.cookie)
-	self.serverLoad[msg.cookie]-=1
+	self.serverLoad[msg.cookie-1]-=1
 
     @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
     def _event_switch_enter_handler(self, ev):

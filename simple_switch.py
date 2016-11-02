@@ -113,7 +113,7 @@ class SimpleSwitch(app_manager.RyuApp):
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
                     parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(self.servers[serverID][0])]
            self.serverLoad[serverID-1]+=1
-	   self.add_flow(datapath, match, actions, 1, 10, ofproto.OFPFF_SEND_FLOW_REM, serverID)
+	   self.add_flow(datapath, match, actions, 1, 120, ofproto.OFPFF_SEND_FLOW_REM, serverID)
            
            #rewriting response header
            match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(self.servers[serverID][1]), 

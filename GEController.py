@@ -139,7 +139,18 @@ class SimpleSwitch(app_manager.RyuApp):
         match = msg.match
 	reason = msg.reason
         self.logger.info("Client released serverID = %d", msg.cookie)
-	self.serverLoad[msg.cookie-1]-=1
+        serverId = msg.cookie - 1
+	if self.serverLoad[serverId] > 0:
+	 self.serverLoad[serverId]-=1
+
+
+
+    def remove_table_flows(self, datapath, table_id, match, instructions):
+        """Create OFP flow mod message to remove flows from table."""
+        ofproto = datapath.ofproto
+        flow_mod = datapath.ofproto_parser.OFPFlowMod(datapath=datapath, match=match, command=ofproto.OFPFC_DELETE, 
+                             cookie=0, idle_timeout=0,out_port=65535, buffer_id=4294967295, flags=0, hard_timeout=0,priority=0, actions=[])
+        return flow_mod
 
     @set_ev_cls(dpset.EventDP, dpset.DPSET_EV_DISPATCHER)
     def _event_switch_enter_handler(self, ev):
@@ -148,7 +159,16 @@ class SimpleSwitch(app_manager.RyuApp):
        dp = ev.dp
        ofproto = dp.ofproto
        parser = dp.ofproto_parser
-       self.logger.info("Switch connected %s. Installing default flows...", dp)
+
+       self.logger.info("Switch connected %s. Delete previous flows...", dp)
+       
+       empty_match = parser.OFPMatch()
+       instructions = []
+       flow_mod = self.remove_table_flows(dp, 0,empty_match, instructions)
+       dp.send_msg(flow_mod)
+
+       self.logger.info("Install the default flows...")
+
        addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') # process packets from servers normally
       # hwAddressList = ('02:71:2a:55:7f:98') #filter client packets
        actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
@@ -163,7 +183,8 @@ class SimpleSwitch(app_manager.RyuApp):
        match = parser.OFPMatch ()
        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
        self.add_flow(dp, match, actions, 0, 0) #add miss flow
-       self.logger.info("Added default rules for servers and miss-flow")
+
+       self.logger.info("Added default rules for servers and miss-flow. Ready to work!")
 
     def ipv4_to_int(self, string):
        	ip = string.split('.')

@@ -102,18 +102,19 @@ class SimpleSwitch(app_manager.RyuApp):
 	tcp_sgm = pkt.get_protocol(tcp.tcp)	
 
 	if tcp_sgm:
-           self.logger.info("packet in %s %s %s %s; TCP ports %s and %s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port, tcp_sgm.src_port, tcp_sgm.dst_port)
+           self.logger.info("packet in %s %s %s %s; TCP ports: source= %s and dest=%s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port, tcp_sgm.src_port, tcp_sgm.dst_port)
            match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(ipv4_pkt.src), tp_src=tcp_sgm.src_port, nw_proto = 6)
-           
+          # self.logger.info("T: Server1 - %d, Server2 - %d, Server3 - %d ", self.T[0], self.T[1], self.T[2])           
            GEvector, lambdaList = fetchServerInfo()
 #	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
-	   MAX, self.T = Propfair(GEvector,0,self.serverLoad, self.T)
+	   self.logger.info("Calling Propfair")
+	   MAX, self.T = Propfair(GEvector,self.serverLoad, self.T)
  	   serverID = MAX+1 #scheduler()
 
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
                     parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(self.servers[serverID][0])]
            self.serverLoad[serverID-1]+=1
-	   self.add_flow(datapath, match, actions, 1, 120, ofproto.OFPFF_SEND_FLOW_REM, serverID)
+	   self.add_flow(datapath, match, actions, 1, 60, ofproto.OFPFF_SEND_FLOW_REM, serverID)
            
            #rewriting response header
            match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(self.servers[serverID][1]), 
@@ -122,8 +123,8 @@ class SimpleSwitch(app_manager.RyuApp):
                     parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
            self.add_flow(datapath, match, actions, 3, 20)
 
-
            self.logger.info("GEVector status: Server1 - %d, Server2 - %d, Server3 - %d ", GEvector[0], GEvector[1], GEvector[2])
+
 #           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", lambdaList[0], lambdaList[1], lambdaList[2])
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
            self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", self.serverLoad[0], self.serverLoad[1], self.serverLoad[2])

@@ -1,9 +1,7 @@
 import os
 import sqlite3
 
-def Propfair(GEvector,Evector,lambdaList,T = 0):
-    if T == 0:
-		T = [1, 1, 1]
+def Propfair(GEvector,lambdaList,T):
     #green energy vector, Grid Energy vector , T is the previous scheduled memory
     tc=50
     NDC=len(GEvector)
@@ -22,7 +20,9 @@ def Propfair(GEvector,Evector,lambdaList,T = 0):
             T[i]=(1-(1/tc))*T[i]+((1/tc))*GEvector[i]
         else:
             T[i]=(1-(1/tc))*T[i]
- 
+			
+    print("***T VALUE*****")
+    print(T)
     #return SClist#, lambdaList
     return MAX, T
 	
@@ -42,11 +42,6 @@ def fetchServerInfo():
 		currentNumberOfUsers[i] = fetchedData[0][6]
 		
 	return currentEnergyValues, currentNumberOfUsers
-	
-GEvector, lambdaList = fetchServerInfo()
-#T = [1, 1, 1]
-MAX, T = Propfair(GEvector,0,lambdaList)
-print (MAX + 1)
 
 		
 	

@@ -47,12 +47,14 @@ According to its licecse(please don't trust my reading and read it), we can modi
 FLOW_HARD_TIMEOUT = 30
 FLOW_IDLE_TIMEOUT = 10
 
+T = [1]*3 #previous scheduled memory
+
+
 class SimpleSwitch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
     
     servers = [0, [1, '10.10.1.1', '02:71:2a:55:7f:98'], [3, '10.10.1.2', '02:b4:9c:c8:84:42'], [4, '10.10.1.3', '02:51:94:52:e2:a7']]
     serverLoad = [0, 0, 0]
-    T = [1, 1, 1] #previous scheduled memory
 
 
     def __init__(self, *args, **kwargs):
@@ -87,6 +89,8 @@ class SimpleSwitch(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
+        global T
+
         dl_type_ipv4 = 0x0800
         msg = ev.msg
         datapath = msg.datapath
@@ -108,7 +112,11 @@ class SimpleSwitch(app_manager.RyuApp):
            GEvector, lambdaList = fetchServerInfo()
 #	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
 	   self.logger.info("Calling Propfair")
-	   MAX, self.T = Propfair(GEvector,self.serverLoad, self.T)
+	   self.logger.info("GEVector status: Server1 - %d, Server2 - %d, Server3 - %d ", GEvector[0], GEvector[1], GEvector[2])
+	   MAX, T, T2 = Propfair(GEvector,T)
+
+           print("T2")
+           print(T2)
  	   serverID = MAX+1 #scheduler()
 
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
@@ -122,8 +130,6 @@ class SimpleSwitch(app_manager.RyuApp):
            actions = [ parser.OFPActionSetNwSrc (self.ipv4_to_int(ipv4_pkt.dst)), #REWRITE IP HEADER FOR TCP CONNECTION ESTABLISHMENT. rewriting eth is not needed parser.OFPActionSetDlSrc(haddr_to_bin(eth.dst)), 
                     parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
            self.add_flow(datapath, match, actions, 3, 20)
-
-           self.logger.info("GEVector status: Server1 - %d, Server2 - %d, Server3 - %d ", GEvector[0], GEvector[1], GEvector[2])
 
 #           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", lambdaList[0], lambdaList[1], lambdaList[2])
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)

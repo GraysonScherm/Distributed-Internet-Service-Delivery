@@ -1,30 +1,30 @@
 import os
 import sqlite3
 
-def Propfair(GEvector,lambdaList,T):
+def Propfair(GEvector,tVector):
     #green energy vector, Grid Energy vector , T is the previous scheduled memory
     tc=50
     NDC=len(GEvector)
     Metric=[0]*NDC    # Vector of the metric we used for scheduling
     for i in range(0,NDC):
-        Metric[i]=GEvector[i]/T[i]
+        Metric[i]=GEvector[i]/tVector[i]
         
     MAX=Metric.index(max(Metric)) #the index of the choosen one  
-
     SClist=[0]*len(GEvector) #refresh the Schedule list
     SClist[MAX]=1  #The Data Center which is selected
     #for i in range(0,NDC):
     #    lambdaList[i]=lambdaList[i]+SClist[i]
     for i in range(0,NDC):
         if SClist[i]==1:
-            T[i]=(1-(1/tc))*T[i]+((1/tc))*GEvector[i]
+            tVector[i]=(1-(1/tc))*tVector[i]+((1/tc))*GEvector[i]
         else:
-            T[i]=(1-(1/tc))*T[i]
-			
-    print("***T VALUE*****")
-    print(T)
+            tVector[i]=(1-(1/tc))*tVector[i]
+    
+    tVector2=tVector			
+    print("---------***T VALUE*****---------")
+    print(tVector)
     #return SClist#, lambdaList
-    return MAX, T
+    return MAX, tVector, tVector2
 	
 def fetchServerInfo():
 	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)

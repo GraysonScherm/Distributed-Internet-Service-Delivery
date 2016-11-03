@@ -1,4 +1,4 @@
-def Propfair(GEvector,Evector,lambdaList,T,NDC):
+def Propfair(GEvector,Evector,lambdaList,T):
     #green energy vector, Grid Energy vector , T is the previous scheduled memory
     tc=50
     NDC=len(GEvector)
@@ -22,22 +22,15 @@ def Propfair(GEvector,Evector,lambdaList,T,NDC):
     print(MAX)
     print(SClist)
     print(lambdaList)
+    print('----------------')
+    return SClist, lambdaList, Metric, T
 
-    return SClist
-
-T=list([1,1,1])
-
+T=[1]*3
+GEvector=[82,95,54]
 Evector=[1]*3
 SClist=[0]*3
+lambdaList=[0]*3
+for i in range(0,10):
+ SClist,lambdaList, Metric, T=Propfair(GEvector,Evector,lambdaList,T)
 
-#print len(GEvector)
-GEvector=[2,1,1]
-
-
-T=[1]*5
-GEvector=[20,5,2,1,1]
-Evector=[1]*5
-SClist=[0]*5
-lambdaList=[0]*5
-for i in range(0,500):
- SClist,lambdaList, Metric=Propfair(GEvector,Evector,lambdaList,T)
+x=input()

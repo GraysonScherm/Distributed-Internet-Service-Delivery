@@ -16,15 +16,14 @@ def Propfair(GEvector,tVector):
     #    lambdaList[i]=lambdaList[i]+SClist[i]
     for i in range(0,NDC):
         if SClist[i]==1:
-            tVector[i]=(1-(1/tc))*tVector[i]+((1/tc))*GEvector[i]
+            tVector[i]=(1.0-(1.0/tc))*tVector[i]+((1.0/tc))*GEvector[i]
         else:
-            tVector[i]=(1-(1/tc))*tVector[i]
+            tVector[i]=(1.0-(1.0/tc))*tVector[i]
     
-    tVector2=tVector			
     print("---------***T VALUE*****---------")
     print(tVector)
     #return SClist#, lambdaList
-    return MAX, tVector, tVector2
+    return MAX, tVector
 	
 def fetchServerInfo():
 	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)

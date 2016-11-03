@@ -47,7 +47,6 @@ According to its licecse(please don't trust my reading and read it), we can modi
 FLOW_HARD_TIMEOUT = 30
 FLOW_IDLE_TIMEOUT = 10
 
-T = [1]*3 #previous scheduled memory
 
 
 class SimpleSwitch(app_manager.RyuApp):
@@ -55,6 +54,7 @@ class SimpleSwitch(app_manager.RyuApp):
     
     servers = [0, [1, '10.10.1.1', '02:71:2a:55:7f:98'], [3, '10.10.1.2', '02:b4:9c:c8:84:42'], [4, '10.10.1.3', '02:51:94:52:e2:a7']]
     serverLoad = [0, 0, 0]
+    T = [1.0]*3 #previous scheduled memory
 
 
     def __init__(self, *args, **kwargs):
@@ -113,10 +113,7 @@ class SimpleSwitch(app_manager.RyuApp):
 #	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
 	   self.logger.info("Calling Propfair")
 	   self.logger.info("GEVector status: Server1 - %d, Server2 - %d, Server3 - %d ", GEvector[0], GEvector[1], GEvector[2])
-	   MAX, T, T2 = Propfair(GEvector,T)
-
-           print("T2")
-           print(T2)
+	   MAX, self.T = Propfair(GEvector,self.T)
  	   serverID = MAX+1 #scheduler()
 
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 

@@ -1,5 +1,7 @@
 import os
+import re
 import sqlite3
+import GEController 
 
 def Propfair(GEvector,tVector):
     #green energy vector, Grid Energy vector , T is the previous scheduled memory
@@ -26,21 +28,23 @@ def Propfair(GEvector,tVector):
     return MAX, tVector
 	
 def fetchServerInfo():
-	fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)
-	conn = sqlite3.connect('/dev/fd/%d' % fd)
-	os.close(fd)
-	cursor = conn.cursor()
+       # serverInfo = re.split(';',line)
+       # servers.append(serverInfo)
+    fd = os.open("/tmp/ryu/Distributed-Internet-Service-Delivery/controller.db", os.O_RDONLY)
+    conn = sqlite3.connect('/dev/fd/%d' % fd)
+    os.close(fd)
+    cursor = conn.cursor()           
+    currentEnergyValues = [0]*GEController.numberOfServers
+    currentNumberOfUsers = [0]*GEController.numberOfServers
 	
-	currentEnergyValues = [0, 0, 0]
-	currentNumberOfUsers = [0, 0, 0]
+    for i in range(0, 3):
+	cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where server  = ?)", str(i + 1))
+	fetchedData = cursor.fetchall()
+	currentEnergyValues[i] = fetchedData[0][1]
+	currentNumberOfUsers[i] = fetchedData[0][6]
 	
-	for i in range(0, 3):
-		cursor.execute("SELECT * from energyValues where id = (SELECT MAX(id) from energyValues where server  = ?)", str(i + 1))
-		fetchedData = cursor.fetchall()
-		currentEnergyValues[i] = fetchedData[0][1]
-		currentNumberOfUsers[i] = fetchedData[0][6]
-		
-	return currentEnergyValues, currentNumberOfUsers
+	
+    return currentEnergyValues, currentNumberOfUsers
 
 		
 	

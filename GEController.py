@@ -19,8 +19,9 @@ An OpenFlow 1.0 L2 learning switch implementation.
 
 import logging
 import struct
-
+import re
 import sqlite3
+import os
 from ryu.base import app_manager
 from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
@@ -47,15 +48,22 @@ According to its licecse(please don't trust my reading and read it), we can modi
 FLOW_HARD_TIMEOUT = 30
 FLOW_IDLE_TIMEOUT = 10
 
+numberOfServers = 0
 
 
 class SimpleSwitch(app_manager.RyuApp):
+    global numberOfServers
+    __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
-    
-    servers = [0, [1, '10.10.1.1', '02:71:2a:55:7f:98'], [3, '10.10.1.2', '02:b4:9c:c8:84:42'], [4, '10.10.1.3', '02:51:94:52:e2:a7']]
-    serverLoad = [0, 0, 0]
-    T = [1.0]*3 #previous scheduled memory
-
+    servers = [0,]
+    with open(os.path.join(__location__, 'servers.conf')) as f:
+      for line in f:
+         serverInfo = re.split(';',line)
+         servers.append(serverInfo)
+         numberOfServers += 1    
+    serverLoad = [0]*numberOfServers
+    T = [1.0]*numberOfServers #previous scheduled memory
+    mac_to_port = {}
 
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch, self).__init__(*args, **kwargs)
@@ -65,7 +73,6 @@ class SimpleSwitch(app_manager.RyuApp):
     def add_flow(self, datapath, match, act, priority=0, idle_timeout=0, flags=0, cookie=0):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-   
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority, match=match, actions=act, flags=flags, idle_timeout=idle_timeout, cookie=cookie)
         datapath.send_msg(mod)
 
@@ -88,9 +95,7 @@ class SimpleSwitch(app_manager.RyuApp):
             sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def _packet_in_handler(self, ev):
-        global T
-
+    def _packet_in_handler(self, ev):      
         dl_type_ipv4 = 0x0800
         msg = ev.msg
         datapath = msg.datapath
@@ -117,8 +122,9 @@ class SimpleSwitch(app_manager.RyuApp):
  	   serverID = MAX+1 #scheduler()
 
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
-                    parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(self.servers[serverID][0])]
+                    parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(int(self.servers[serverID][0]))]
            self.serverLoad[serverID-1]+=1
+	   print serverID
 	   self.add_flow(datapath, match, actions, 1, 60, ofproto.OFPFF_SEND_FLOW_REM, serverID)
            
            #rewriting response header
@@ -132,9 +138,8 @@ class SimpleSwitch(app_manager.RyuApp):
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
            self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", self.serverLoad[0], self.serverLoad[1], self.serverLoad[2])
            actions = []
-           actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, self.servers[serverID][0]) ) 
+           actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, int(self.servers[serverID][0])) ) 
            sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)
-
 	
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removal_handler(self, ev):
@@ -172,20 +177,22 @@ class SimpleSwitch(app_manager.RyuApp):
 
        self.logger.info("Install the default flows...")
 
-       addressList = ('10.10.1.1', '10.10.1.2', '10.10.1.3') # process packets from servers normally
+     #  addressList = []
+      # for server in self.servers:
+      #  addressList.append(server[1]) # process packets from servers normally
       # hwAddressList = ('02:71:2a:55:7f:98') #filter client packets
        actions = [parser.OFPActionOutput(ofproto.OFPP_NORMAL)]
-       for address in addressList:
-         match = parser.OFPMatch(dl_type = dl_type_ipv4, nw_src = address)
-         self.add_flow(dp, match, actions, 2, 0)     
+       for i in range(1, len(self.servers)):
+          match = parser.OFPMatch(dl_type = dl_type_ipv4, nw_src = self.servers[i][1])
+          self.add_flow(dp, match, actions, 2, 0)     
 #        self.logger.info("Added l2 flow for address %s", address)
        
        match = parser.OFPMatch(dl_type = dl_type_arp)#process arp packets normally
-       self.add_flow(dp, match, actions, 1, 0)
+       self.add_flow(dp, match, actions, 100, 0)
 
        match = parser.OFPMatch ()
        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
-       self.add_flow(dp, match, actions, 0, 0) #add miss flow
+       self.add_flow(dp, match, actions, 1, 0) #add miss flow
 
        self.logger.info("Added default rules for servers and miss-flow. Ready to work!")
 

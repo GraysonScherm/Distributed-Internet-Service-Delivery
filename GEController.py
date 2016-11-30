@@ -117,7 +117,8 @@ class SimpleSwitch(app_manager.RyuApp):
            GEvector, lambdaList = fetchServerInfo()
 #	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
 	   self.logger.info("Calling Propfair")
-	   self.logger.info("GEVector status: Server1 - %d, Server2 - %d, Server3 - %d ", GEvector[0], GEvector[1], GEvector[2])
+           for i in range (0, numberOfServers):
+	     self.logger.info("GEVector status: Server%d - %d", i+1, GEvector[i])
 	   MAX, self.T = Propfair(GEvector,self.T)
  	   serverID = MAX+1 #scheduler()
 
@@ -136,7 +137,8 @@ class SimpleSwitch(app_manager.RyuApp):
 
 #           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", lambdaList[0], lambdaList[1], lambdaList[2])
            self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
-           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", self.serverLoad[0], self.serverLoad[1], self.serverLoad[2])
+           for i in range(0, numberOfServers):
+             self.logger.info("Current number of users: Server%d - %d", i+1, self.serverLoad[i])
            actions = []
            actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, int(self.servers[serverID][0])) ) 
            sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)

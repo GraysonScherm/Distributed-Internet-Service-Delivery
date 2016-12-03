@@ -4,7 +4,7 @@ import datetime
 import time, random
 import subprocess
 
-TCP_IP = '72.36.65.116'
+TCP_IP = '192.1.242.154'
 TCP_PORT = 5005
 BUFFER_SIZE = 1024 #buffer size
 

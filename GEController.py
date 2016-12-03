@@ -22,6 +22,7 @@ import struct
 import re
 import sqlite3
 import os
+import sys
 from ryu.base import app_manager
 from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
@@ -111,21 +112,23 @@ class SimpleSwitch(app_manager.RyuApp):
 	tcp_sgm = pkt.get_protocol(tcp.tcp)	
 
 	if tcp_sgm:
-           self.logger.info("packet in %s %s %s %s; TCP ports: source= %s and dest=%s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port, tcp_sgm.src_port, tcp_sgm.dst_port)
+           self.logger.info("packet in %s %s %s %s; TCP ports: source=%s and dest=%s", dpid, ipv4_pkt.src, ipv4_pkt.dst, msg.in_port, tcp_sgm.src_port, tcp_sgm.dst_port)
            match = parser.OFPMatch (dl_type = dl_type_ipv4, nw_src=self.ipv4_to_int(ipv4_pkt.src), tp_src=tcp_sgm.src_port, nw_proto = 6)
           # self.logger.info("T: Server1 - %d, Server2 - %d, Server3 - %d ", self.T[0], self.T[1], self.T[2])           
            GEvector, lambdaList = fetchServerInfo()
 #	   MAX, self.T = Propfair(GEvector,0,lambdaList, self.T)
 	   self.logger.info("Calling Propfair")
+           print "GEVector status:"
            for i in range (0, numberOfServers):
-	     self.logger.info("GEVector status: Server%d - %d", i+1, GEvector[i])
+	     sys.stdout.write("Server" + str(i+1) + " = " + str(GEvector[i]) + " || ")
+           print " "
 	   MAX, self.T = Propfair(GEvector,self.T)
  	   serverID = MAX+1 #scheduler()
-
+           
            actions = [parser.OFPActionSetNwDst(self.ipv4_to_int(self.servers[serverID][1])), 
                     parser.OFPActionSetDlDst(haddr_to_bin(self.servers[serverID][2])), parser.OFPActionOutput(int(self.servers[serverID][0]))]
            self.serverLoad[serverID-1]+=1
-	   print serverID
+	   print "Server", serverID, "is chosen for the client with IP/Port", ipv4_pkt.src, tcp_sgm.src_port
 	   self.add_flow(datapath, match, actions, 1, 60, ofproto.OFPFF_SEND_FLOW_REM, serverID)
            
            #rewriting response header
@@ -136,9 +139,11 @@ class SimpleSwitch(app_manager.RyuApp):
            self.add_flow(datapath, match, actions, 3, 60)
 
 #           self.logger.info("Current number of users: Server1 - %d, Server2 - %d, Server3 - %d", lambdaList[0], lambdaList[1], lambdaList[2])
-           self.logger.info("Flow installed for client %s and serverID %d", ipv4_pkt.src, serverID)
+           self.logger.info("Flow installed")
+           print "Current number of users on each server:"
            for i in range(0, numberOfServers):
-             self.logger.info("Current number of users: Server%d - %d", i+1, self.serverLoad[i])
+             sys.stdout.write("Server" + str(i+1) + " = " + str(self.serverLoad[i]) + " || ")
+           print " "
            actions = []
            actions.append( createOFAction(datapath, ofproto.OFPAT_OUTPUT, int(self.servers[serverID][0])) ) 
            sendPacketOut(msg=msg, actions=actions, buffer_id=msg.buffer_id)
